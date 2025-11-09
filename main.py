@@ -14,7 +14,7 @@ app = FastAPI(title="AgriPulse Backend")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://agri-pulse-frontend.vercel.app",
+        "https://frontend-agripulse.vercel.app/",
         "http://localhost:5173",
     ],
     allow_credentials=True,
