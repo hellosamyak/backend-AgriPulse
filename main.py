@@ -22,12 +22,18 @@ app = FastAPI(
 # ===============================================================
 # 🌐 CORS Configuration
 # ===============================================================
+# Allowed origins for the FastAPI application.
+# Includes the deployed Vercel frontend and both HTTP/HTTPS local dev environments.
+origins = [
+    "https://frontend-agripulse.vercel.app",
+    "http://localhost:5173",
+    "https://localhost:5173",  # Added HTTPS version for mobile testing scenarios
+    "http://127.0.0.1:8000",  # Added if you test the local backend directly
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://frontend-agripulse.vercel.app",  # ✅ remove trailing slash
-        "http://localhost:5173",
-    ],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
