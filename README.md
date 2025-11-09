@@ -1,6 +1,4 @@
-## ⚙️ **Backend — AgriPulse (FastAPI Server)**
-
-# ⚙️ AgriPulse Backend
+## ⚙️ AgriPulse Backend
 
 > 🧠 *AI-driven agriculture intelligence system providing insights, weather data, and trade analytics.*
 
