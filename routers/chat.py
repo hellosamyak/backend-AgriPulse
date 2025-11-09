@@ -1,15 +1,22 @@
 from fastapi import APIRouter, HTTPException, Request
 from google import genai
 import os
+import asyncio
 from dotenv import load_dotenv
 
+# --- Load environment variables ---
 load_dotenv()
+
+# --- Initialize Gemini Client ---
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
+# --- Router ---
 router = APIRouter(prefix="/chat", tags=["AI Chatbot"])
 
 
-# ✅ POST route — for chatbot requests
+# ======================================================
+# 🤖 AI Chatbot (POST)
+# ======================================================
 @router.post("/")
 async def chat(request: Request):
     """
@@ -31,22 +38,25 @@ async def chat(request: Request):
         prompt = f"""
         You are AgriPulse AI — an agriculture expert designed to assist Indian farmers.
         Your goal is to give practical, location-aware, and concise answers.
-        Use simple language (english and vernacular) and short paragraphs.
+        Use simple English and local context for clarity.
 
         Guidelines:
-        - Base advice on weather, soil type, and current season (India).
+        - Base advice on Indian weather, soil type, and season.
         - When asked about crop choices, include 2–3 options with reasoning.
-        - When asked about diseases, suggest natural and chemical control options.
+        - When asked about diseases, suggest natural and chemical control.
         - When asked about prices, mention market trends and storage tips.
-        - When asked about government schemes or subsidies, summarize simply.
+        - When asked about schemes or subsidies, summarize simply.
 
         Farmer's question:
         {message}
         """
 
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
+        # ✅ Run Gemini sync call in background thread
+        response = await asyncio.to_thread(
+            lambda: client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+            )
         )
 
         return {"response": response.text.strip()}
@@ -58,9 +68,11 @@ async def chat(request: Request):
         )
 
 
-# ✅ Optional GET route (for Render health check)
+# ======================================================
+# 🩺 Health Check (GET)
+# ======================================================
 @router.get("/")
 def chat_health():
     return {
-        "message": "Chat endpoint active. Use POST /chat/ with JSON body to talk to AgriPulse AI."
+        "message": "✅ Chat endpoint active. Use POST /chat/ with JSON body to talk to AgriPulse AI."
     }

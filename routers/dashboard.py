@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 from google import genai
-from functools import lru_cache
+from async_lru import alru_cache  # ✅ async-safe cache
 import httpx
 import os
 import datetime
@@ -40,7 +40,7 @@ async def get_dashboard(location: str = "Indore"):
         mandi_task = asyncio.create_task(fetch_mandi_data_async(location))
         weather_data, mandi_data = await asyncio.gather(weather_task, mandi_task)
 
-        # Static placeholder news (could also be cached)
+        # Static placeholder news
         news_data = [
             {
                 "headline": "Govt raises MSP for wheat by ₹150/quintal",
@@ -88,7 +88,7 @@ async def get_dashboard(location: str = "Indore"):
 # ======================================================
 # 🌤️ WEATHER DATA (ASYNC + CACHE)
 # ======================================================
-@lru_cache(maxsize=32)
+@alru_cache(maxsize=32)
 async def fetch_weather_data_async(location: str):
     try:
         url = f"http://api.weatherapi.com/v1/forecast.json?key={WEATHER_API_KEY}&q={location}&days=7&aqi=no&alerts=no"
@@ -142,7 +142,7 @@ async def fetch_weather_data_async(location: str):
 # ======================================================
 # 📊 MARKET DATA (ASYNC + CACHE)
 # ======================================================
-@lru_cache(maxsize=32)
+@alru_cache(maxsize=32)
 async def fetch_mandi_data_async(location: str):
     try:
         url = "https://data.gov.in"
@@ -264,6 +264,9 @@ Output top 3 crops to *plant or sell* this week, strictly in JSON:
         ]
 
 
+# ======================================================
+# 🧩 SNAPSHOT + CACHE ENDPOINT
+# ======================================================
 async def fetch_dashboard_snapshot(location="Indore"):
     weather = await fetch_weather_data_async(location)
     mandi = await fetch_mandi_data_async(location)

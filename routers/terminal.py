@@ -24,7 +24,6 @@ router = APIRouter(prefix="/terminal", tags=["Agri Terminal"])
 # -----------------------
 DATA_GOV_API_KEY = os.getenv("DATA_GOV_API_KEY")
 WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
-DISTANCEMATRIX_API_KEY = os.getenv("DISTANCEMATRIX_API_KEY")
 
 DATA_PATH = (
     Path(__file__).resolve().parents[1]
@@ -37,6 +36,7 @@ CACHE = {
     "international_options": {"commodities": [], "ports": [], "timestamp": None},
     "last_refresh": None,
 }
+
 CACHE_REFRESH_INTERVAL = int(os.getenv("TERMINAL_CACHE_REFRESH_SECONDS", 5 * 60))
 
 
@@ -83,19 +83,7 @@ def fetch_mandi_records(commodity: str, limit: int = 200):
                 "max_price": "2450",
                 "modal_price": "2350",
                 "price_unit": "Rs/Quintal",
-            },
-            {
-                "state": "Maharashtra",
-                "district": "Nagpur",
-                "market": "Nagpur",
-                "commodity": commodity.capitalize(),
-                "variety": "Common",
-                "arrival_date": today,
-                "min_price": "2250",
-                "max_price": "2480",
-                "modal_price": "2380",
-                "price_unit": "Rs/Quintal",
-            },
+            }
         ]
 
 
@@ -212,7 +200,7 @@ def generate_price_forecast(market_data, days=7):
 
 
 # -----------------------
-# AI Insight (fallback)
+# AI Insight (Fallback)
 # -----------------------
 def fallback_structured_insight(
     commodity, market_data, summary, forecast, harvest_days, weather
@@ -290,7 +278,7 @@ def assemble_terminal_payload(commodity="wheat", harvest_days=53, location="Indo
 
 
 # -----------------------
-# Background Cache Thread
+# Cache Background System
 # -----------------------
 def cache_refresh_once_for(commodity="wheat", harvest_days=53, location="Indore"):
     try:
@@ -310,7 +298,6 @@ def cache_background_loop():
         try:
             for c in ["wheat", "rice", "maize", "soybean"]:
                 cache_refresh_once_for(c)
-            # also refresh international options
             CACHE["international_options"] = build_international_options_from_csv()
             CACHE["international_options"][
                 "timestamp"
@@ -321,20 +308,14 @@ def cache_background_loop():
         time.sleep(CACHE_REFRESH_INTERVAL)
 
 
-_cache_thread_started = False
-
-
-@router.on_event("startup")
-def start_cache_on_startup():
-    global _cache_thread_started
-    if not _cache_thread_started:
-        print("🧩 Prefilling terminal cache on startup...")
-        for c in ["wheat", "rice", "maize", "soybean"]:
-            cache_refresh_once_for(c)
-        t = threading.Thread(target=cache_background_loop, daemon=True)
-        t.start()
-        _cache_thread_started = True
-        print("🚀 Terminal cache system started successfully.")
+# Start cache when module loads (since router events won’t trigger)
+if not CACHE["commodities"]:
+    print("🧩 Prefilling terminal cache on module load...")
+    for c in ["wheat", "rice", "maize", "soybean"]:
+        cache_refresh_once_for(c)
+    t = threading.Thread(target=cache_background_loop, daemon=True)
+    t.start()
+    print("🚀 Terminal cache system started successfully.")
 
 
 # -----------------------
@@ -369,7 +350,6 @@ def get_terminal_cached():
     try:
         default = CACHE["commodities"].get("wheat")
         if not default or not default.get("payload"):
-            print("⚙️ Cache empty, rebuilding...")
             cache_refresh_once_for("wheat")
             default = CACHE["commodities"].get("wheat")
 
@@ -384,13 +364,11 @@ def get_terminal_cached():
 
 @router.get("/international-options")
 def get_international_options():
-    """Return cached or built international trade options."""
     try:
         opts = CACHE.get("international_options", {})
         if opts and opts.get("ports"):
             return JSONResponse(content=opts)
 
-        # fallback if cache empty
         opts = build_international_options_from_csv()
         CACHE["international_options"] = {
             "commodities": opts["commodities"],
@@ -409,7 +387,7 @@ def get_international_options():
 
 
 # ==========================================================
-# 🌾 Snapshot Fetcher (for main.py prefetch)
+# 🌾 Snapshot Fetcher
 # ==========================================================
 async def fetch_terminal_snapshot(commodity: str = "wheat", location: str = "Indore"):
     try:
